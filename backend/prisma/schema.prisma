@@ -1,0 +1,68 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            Int         @id @default(autoincrement())
+  name          String
+  email         String         @unique
+  password String
+  progress      UserProgress[]
+}
+
+model Step {
+  id         Int       @id @default(autoincrement())
+  title      String
+
+  subSteps   SubStep[]
+}
+
+model SubStep {
+  id          Int      @id @default(autoincrement())
+  title       String
+
+  stepId       Int
+  step         Step     @relation(fields: [stepId], references: [id])
+
+  topics       Topic[]
+}
+
+model Topic {
+  id             Int @id @default(autoincrement())
+  questionTitle  String
+  postLink       String?
+  ytLink         String?
+  plusLink       String?
+  editorialLink  String?
+  gfgLink        String?
+  csLink         String?
+  lcLink         String?
+  difficulty     Int
+
+  subStepId      Int
+  subStep        SubStep @relation(fields: [subStepId], references: [id])
+  userProgress   UserProgress[]
+}
+
+model UserProgress {
+  id          Int   @id @default(autoincrement())
+
+  userId      Int
+  topicId     Int 
+  isCompleted Boolean @default(false)
+
+  user         User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic        Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, topicId])
+}
