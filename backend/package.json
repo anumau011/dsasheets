@@ -5,6 +5,8 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
+    "prestart": "npx prisma generate",
+    "start": "node index.js",
     "dev": "nodemon index.js"
   },
   "keywords": [],
@@ -20,6 +22,7 @@
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "node-cache": "^5.1.2",
+    "node-cron": "^4.5.0",
     "pg": "^8.22.0",
     "prisma": "^7.8.0"
   },

@@ -1,32 +1,37 @@
-import dotenv from 'dotenv';
+import dotenv from "dotenv";
 dotenv.config();
-import express from 'express';
+import express from "express";
 import NodeCache from "node-cache";
 import { prisma } from "./lib/prisma.js";
-import bcrypt from "bcrypt"
+import bcrypt from "bcrypt";
 import { generateToken } from "./lib/jwt.js";
 import authenticate from "./middleware.js";
 import cors from "cors";
-const cache = new NodeCache({stdTTL: 3600});
+const cache = new NodeCache({ stdTTL: 3600 });
 const app = express();
 const PORT = process.env.PORT || 5000;
+import cronJob from "./lib/cron.js";
 
-app.use(cors(
-  {
-    origin: "http://localhost:5173",
+const allowedOrigins = process.env.FRONTEND_URLS?.split(",").map((url) => url.trim()) || [];
+
+app.use(
+  cors({
+    origin: allowedOrigins,
     credentials: true,
     methods: ["GET", "POST"],
-    allowedHeaders: ["Content-Type", "Authorization"]
-  }
-));
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+);
 
 app.use(express.json());
 
-app.get('/', (req, res) => {
+cronJob.start(); 
+
+app.get("/", (req, res) => {
   res.send("API is running...");
 });
 
-app.get('/api/questions', async (req, res) => {
+app.get("/api/questions", async (req, res) => {
   // Sample data for questions
 
   const cached = cache.get("questions");
@@ -48,17 +53,19 @@ app.get('/api/questions', async (req, res) => {
   cache.set("questions", questions);
 
   res.json(questions);
-})
+});
 
-app.post('/api/signup', async (req, res) => {
+app.post("/api/signup", async (req, res) => {
   const { name, email, password } = req.body;
 
   if (!name || !email || !password) {
-    return res.status(400).json({ error: "Name, email, and password are required" });
-  }   
+    return res
+      .status(400)
+      .json({ error: "Name, email, and password are required" });
+  }
 
   const existingUser = await prisma.user.findUnique({
-    where: { email }
+    where: { email },
   });
 
   if (existingUser) {
@@ -71,15 +78,15 @@ app.post('/api/signup', async (req, res) => {
     data: {
       name,
       email,
-      password: hashedPassword
-    }
+      password: hashedPassword,
+    },
   });
 
   const token = generateToken(user);
   res.json({ token });
 });
 
-app.post('/api/login', async (req, res) => {
+app.post("/api/login", async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
@@ -87,7 +94,7 @@ app.post('/api/login', async (req, res) => {
   }
 
   const user = await prisma.user.findUnique({
-    where: { email }
+    where: { email },
   });
 
   if (!user) {
@@ -104,83 +111,86 @@ app.post('/api/login', async (req, res) => {
   res.json({ token });
 });
 
-app.post('/api/mark-complete',authenticate, async (req, res) => {
-  const { questionId:topicId } = req.body;
+app.post("/api/mark-complete", authenticate, async (req, res) => {
+  const { questionId: topicId } = req.body;
   const userId = req.user.id;
 
   const userProgress = await prisma.userProgress.upsert({
     where: {
       userId_topicId: {
         userId,
-        topicId
-      }
+        topicId,
+      },
     },
     update: {
-      isCompleted: true
+      isCompleted: true,
     },
     create: {
       userId,
       topicId,
-      isCompleted: true
-    }
+      isCompleted: true,
+    },
   });
 
   res.json(userProgress);
 });
 
-app.post('/api/mark-undo', authenticate, async (req, res) => {
-  const { questionId:topicId } = req.body;
+app.post("/api/mark-undo", authenticate, async (req, res) => {
+  const { questionId: topicId } = req.body;
   const userId = req.user.id;
 
   const userProgress = await prisma.userProgress.upsert({
     where: {
       userId_topicId: {
         userId,
-        topicId
-      }
+        topicId,
+      },
     },
     update: {
-      isCompleted: false
+      isCompleted: false,
     },
     create: {
       userId,
       topicId,
-      isCompleted: false
-    }
+      isCompleted: false,
+    },
   });
 
-  res.json({success: true, message: "Marked as not completed"});
+  res.json({ success: true, message: "Marked as not completed" });
 });
 
-app.post('/api/me', authenticate, async (req, res) => {
+app.post("/api/me", authenticate, async (req, res) => {
   const userId = req.user.id;
   const user = await prisma.user.findUnique({
     where: {
-      id: userId
+      id: userId,
     },
     select: {
       id: true,
-      name: true, 
+      name: true,
       email: true,
-    }
+    },
   });
   res.json(user);
 });
 
-
-app.get('/api/user-progress', authenticate, async (req, res) => {
+app.get("/api/user-progress", authenticate, async (req, res) => {
   const userId = req.user.id;
   const userProgress = await prisma.userProgress.findMany({
     where: {
       userId,
-      isCompleted:true
+      isCompleted: true,
     },
     select: {
       topicId: true,
-      isCompleted: true
-    }
+      isCompleted: true,
+    },
   });
   res.json(userProgress);
+});
+
+app.get("/health", (req, res) => {
+  res.status(200).send("OK");
 });
 
 app.listen(PORT, () => {
