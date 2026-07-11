@@ -25,7 +25,7 @@ app.use(
 
 app.use(express.json());
 
-cronJob.start(); 
+// cronJob.start();
 
 app.get("/", (req, res) => {
   res.send("API is running...");

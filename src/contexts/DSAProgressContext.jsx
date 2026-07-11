@@ -97,15 +97,29 @@ export const DSAProgressProvider = ({ children }) => {
       const alreadyCompleted = completedProblems.has(problemData.id);
 
       if (alreadyCompleted) {
-        await markUndo(problemData.id);
-
+        // await markUndo(problemData.id);
+        toast.promise(
+          markUndo(problemData.id),
+          {
+            loading: "Marking as incomplete...",
+            success: "Problem marked as incomplete!",
+            error: "Failed to undo completion.",
+          }
+        );
         setCompletedProblems((prev) => {
           const updated = new Set(prev);
           updated.delete(problemData.id);
           return updated;
         });
       } else {
-        await markDone(problemData.id);
+        toast.promise(
+          markDone(problemData.id),
+          {
+            loading: "Marking as complete...",
+            success: "Problem marked as complete!",
+            error: "Failed to mark as complete.",
+          }
+        );
 
         setCompletedProblems((prev) => {
           const updated = new Set(prev);
